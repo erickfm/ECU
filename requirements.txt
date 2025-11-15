@@ -1,0 +1,49 @@
+# Emergent Corpus Understanding System - Dependencies
+
+# Database
+psycopg2-binary==2.9.9
+pgvector==0.2.4
+sqlalchemy==2.0.23
+
+# LLM & Agent Framework
+openai==1.6.1
+langchain==0.1.0
+langchain-openai==0.0.2
+langgraph==0.0.20
+langsmith==0.0.69
+
+# DSPy for optimization
+dspy-ai==2.3.5
+
+# Embeddings
+sentence-transformers==2.2.2
+torch==2.1.2
+
+# Vector Search
+faiss-cpu==1.7.4
+
+# Data Processing
+pandas==2.1.4
+numpy==1.26.2
+tqdm==4.66.1
+
+# Text Processing
+spacy==3.7.2
+nltk==3.8.1
+
+# Utilities
+python-dotenv==1.0.0
+pydantic==2.5.3
+tenacity==8.2.3
+
+# API & Web
+fastapi==0.108.0
+uvicorn==0.25.0
+
+# Logging & Monitoring
+loguru==0.7.2
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+

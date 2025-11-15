@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ECU - Emergent Corpus Understanding</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        
+        h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .main-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .query-section {
+            margin-bottom: 30px;
+        }
+        
+        .query-input {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1em;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            transition: border-color 0.3s;
+        }
+        
+        .query-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .result {
+            display: none;
+        }
+        
+        .answer-box {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .answer-text {
+            font-size: 1.1em;
+            line-height: 1.6;
+            color: #333;
+        }
+        
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .metric-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .metric-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        
+        .metric-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .evidence-trail {
+            margin-top: 20px;
+        }
+        
+        .evidence-item {
+            padding: 10px;
+            background: #f8f9fa;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            font-size: 0.95em;
+        }
+        
+        .uncertainties {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+            margin-top: 20px;
+        }
+        
+        .uncertainty-item {
+            padding: 8px 0;
+            color: #856404;
+        }
+        
+        .examples {
+            margin-top: 20px;
+        }
+        
+        .example {
+            display: inline-block;
+            background: #e8eaf6;
+            color: #3f51b5;
+            padding: 8px 15px;
+            border-radius: 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background 0.2s;
+        }
+        
+        .example:hover {
+            background: #c5cae9;
+        }
+        
+        h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        h3 {
+            color: #666;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧠 ECU</h1>
+            <p class="subtitle">Emergent Corpus Understanding</p>
+        </header>
+        
+        <div class="main-card">
+            <div class="query-section">
+                <h2>Ask a Question</h2>
+                <textarea 
+                    id="queryInput" 
+                    class="query-input" 
+                    rows="3" 
+                    placeholder="What would you like to know? (e.g., Who is Jeffrey Epstein? What organizations are mentioned?)"></textarea>
+                <button id="submitBtn" class="button" onclick="submitQuery()">Search Corpus</button>
+                
+                <div class="examples">
+                    <h3>Example Queries:</h3>
+                    <span class="example" onclick="setExample('Who is Jeffrey Epstein?')">Who is Jeffrey Epstein?</span>
+                    <span class="example" onclick="setExample('What organizations are mentioned in the documents?')">What organizations are mentioned?</span>
+                    <span class="example" onclick="setExample('What did the oversight committee investigate?')">What was investigated?</span>
+                    <span class="example" onclick="setExample('Are there contradictions in the documents?')">Find contradictions</span>
+                </div>
+            </div>
+            
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Analyzing corpus... This may take 15-60 seconds.</p>
+            </div>
+            
+            <div id="result" class="result">
+                <h2>Answer</h2>
+                <div class="answer-box">
+                    <div id="answerText" class="answer-text"></div>
+                </div>
+                
+                <div class="metrics">
+                    <div class="metric-card">
+                        <div class="metric-label">Confidence</div>
+                        <div id="confidence" class="metric-value">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Iterations</div>
+                        <div id="iterations" class="metric-value">-</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Observations</div>
+                        <div id="observations" class="metric-value">-</div>
+                    </div>
+                </div>
+                
+                <div id="uncertaintiesSection" class="uncertainties" style="display: none;">
+                    <h3>⚠️ Uncertainties</h3>
+                    <div id="uncertaintiesList"></div>
+                </div>
+                
+                <div class="evidence-trail">
+                    <h3>Evidence Trail</h3>
+                    <div id="evidenceList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = 'http://localhost:8000';
+        
+        function setExample(query) {
+            document.getElementById('queryInput').value = query;
+        }
+        
+        async function submitQuery() {
+            const query = document.getElementById('queryInput').value.trim();
+            
+            if (!query) {
+                alert('Please enter a query');
+                return;
+            }
+            
+            // Show loading, hide result
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('submitBtn').disabled = true;
+            
+            try {
+                const response = await fetch(`${API_URL}/query`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                displayResult(result);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert(`Error: ${error.message}\n\nMake sure the ECU API server is running on ${API_URL}`);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('submitBtn').disabled = false;
+            }
+        }
+        
+        function displayResult(result) {
+            // Show result section
+            document.getElementById('result').style.display = 'block';
+            
+            // Answer
+            document.getElementById('answerText').textContent = result.answer || 'No answer available';
+            
+            // Metrics
+            document.getElementById('confidence').textContent = `${result.confidence.toFixed(1)}/10`;
+            document.getElementById('iterations').textContent = result.iterations;
+            document.getElementById('observations').textContent = result.observations_count;
+            
+            // Uncertainties
+            if (result.uncertainties && result.uncertainties.length > 0) {
+                document.getElementById('uncertaintiesSection').style.display = 'block';
+                const list = document.getElementById('uncertaintiesList');
+                list.innerHTML = result.uncertainties
+                    .map(u => `<div class="uncertainty-item">• ${u}</div>`)
+                    .join('');
+            } else {
+                document.getElementById('uncertaintiesSection').style.display = 'none';
+            }
+            
+            // Evidence trail
+            const evidenceList = document.getElementById('evidenceList');
+            evidenceList.innerHTML = result.evidence_trail
+                .map(e => `<div class="evidence-item">${e}</div>`)
+                .join('');
+        }
+        
+        // Allow Enter to submit (with Shift+Enter for new line)
+        document.getElementById('queryInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                submitQuery();
+            }
+        });
+    </script>
+</body>
+</html>
+
