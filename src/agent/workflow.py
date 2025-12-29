@@ -17,7 +17,7 @@ from loguru import logger
 from openai import OpenAI
 
 from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.checkpoint.memory import MemorySaver
 
 from src.agent.state import AgentState, SubQuestion, Hypothesis
 from src.agent.prompts import (
@@ -35,7 +35,7 @@ from src.config import config
 class ECUAgent:
     """Emergent Corpus Understanding Agent."""
     
-    def __init__(self, engine, checkpointer_path: str = "data/checkpoints.db"):
+    def __init__(self, engine):
         self.engine = engine
         self.tools = RetrievalTools(engine)
         self.client = OpenAI(api_key=config.OPENAI_API_KEY)
@@ -45,7 +45,7 @@ class ECUAgent:
         self.workflow = self._build_workflow()
         
         # Set up checkpointer for persistence
-        memory = SqliteSaver.from_conn_string(checkpointer_path)
+        memory = MemorySaver()
         self.app = self.workflow.compile(
             checkpointer=memory,
             interrupt_before=[],  # Can add human-in-the-loop points
@@ -180,15 +180,32 @@ class ECUAgent:
             state['observations'] = []
         state['observations'].extend(new_observations)
         
-        logger.info(f"Gathered {len(new_observations)} new observations")
+        # Memory pruning: prevent unbounded observation growth
+        MAX_OBS = config.MAX_OBSERVATIONS_IN_MEMORY
+        if len(state['observations']) > MAX_OBS:
+            pruned_count = len(state['observations']) - MAX_OBS
+            state['observations'] = state['observations'][-MAX_OBS:]
+            state['evidence_trail'].append(f"Pruned {pruned_count} old observations, kept last {MAX_OBS}")
+            logger.info(f"Pruned observations: kept {MAX_OBS}, removed {pruned_count}")
+        
+        logger.info(f"Gathered {len(new_observations)} new observations (total: {len(state['observations'])})")
         return state
     
     def detect_patterns(self, state: AgentState) -> AgentState:
         """Detect patterns in observations."""
         logger.info("Detecting patterns")
         
-        # Get recent observations (last 50 to avoid context overflow)
-        recent_obs = state.get('observations', [])[-50:]
+        # Get recent observations with truncated context to reduce memory/token usage
+        all_obs = state.get('observations', [])[-20:]  # Reduced from 50 to 20
+        recent_obs = [
+            {
+                'id': o.get('id', i),
+                'doc_id': o.get('doc_id', ''),
+                'context': o.get('context', '')[:config.OBSERVATION_CONTEXT_LIMIT],  # Truncate long contexts
+                'similarity': o.get('similarity', 0.0)
+            }
+            for i, o in enumerate(all_obs)
+        ]
         
         prompt = PATTERN_DETECTION_PROMPT.format(
             observations=json.dumps(recent_obs, indent=2),
@@ -219,6 +236,17 @@ class ECUAgent:
             state['evidence_trail'].append(f"Formed hypothesis: {pattern['claim'][:100]}... (confidence: {pattern['confidence']})")
         
         state['hypotheses'] = hypotheses
+        
+        # Prune hypotheses if too many
+        MAX_HYPOTHESES = config.MAX_HYPOTHESES
+        if len(state['hypotheses']) > MAX_HYPOTHESES:
+            # Keep highest confidence hypotheses
+            state['hypotheses'] = sorted(
+                state['hypotheses'], 
+                key=lambda h: h.get('confidence', 0), 
+                reverse=True
+            )[:MAX_HYPOTHESES]
+            state['evidence_trail'].append(f"Pruned to top {MAX_HYPOTHESES} hypotheses by confidence")
         
         logger.info(f"Detected {len(result.get('patterns', []))} patterns")
         return state
@@ -282,6 +310,12 @@ class ECUAgent:
         state['evidence_trail'].append(
             f"Meta-reasoning: confidence={state['confidence_score']}, decision={state['_decision']}"
         )
+        
+        # Prune evidence trail if too long
+        MAX_TRAIL = config.MAX_EVIDENCE_TRAIL_ITEMS
+        if len(state['evidence_trail']) > MAX_TRAIL:
+            # Keep first 10 (context) and last (MAX_TRAIL - 10) entries
+            state['evidence_trail'] = state['evidence_trail'][:10] + state['evidence_trail'][-(MAX_TRAIL - 10):]
         
         logger.info(f"Meta-reasoning: {state['_decision']} (confidence: {state['confidence_score']})")
         return state
@@ -361,7 +395,7 @@ class ECUAgent:
             stop_reason=None,
             answer=None,
             uncertainties=[],
-            started_at=datetime.now(),
+            started_at=datetime.now().isoformat(),
             tokens_used=0,
         )
         

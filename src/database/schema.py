@@ -29,10 +29,10 @@ class Observation(Base):
     span_end = Column(Integer, nullable=True)
     surface_form = Column(Text, nullable=True)  # e.g., "John", "the CEO", "J. Smith"
     context = Column(Text, nullable=False)  # Surrounding text / chunk content
-    embedding = Column(Vector(384), nullable=True)  # Sentence transformer dimension
+    embedding = Column(Vector(1536), nullable=True)  # OpenAI embeddings are 1536-dimensional
     doc_timestamp = Column(TIMESTAMP, nullable=True, index=True)
     source_reliability = Column(Float, default=1.0)
-    metadata = Column(JSON, default={})  # Flexible additional data
+    meta_data = Column(JSON, default={})  # Flexible additional data (renamed from metadata)
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     
     # Relationships
@@ -65,7 +65,7 @@ class ObservationCooccurrence(Base):
     doc_id = Column(String(500), nullable=False, index=True)
     co_occurrence_type = Column(String(50), nullable=True)  # 'same_sentence', 'same_paragraph', etc.
     strength = Column(Float, default=1.0)  # Weight based on proximity
-    metadata = Column(JSON, default={})
+    meta_data = Column(JSON, default={})
     
     # Relationships
     observation_a = relationship(
@@ -100,7 +100,7 @@ class CachedHypothesis(Base):
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     last_tested = Column(TIMESTAMP, default=datetime.utcnow)
     times_validated = Column(Integer, default=0)
-    metadata = Column(JSON, default={})
+    meta_data = Column(JSON, default={})
     
     def __repr__(self):
         return f"<CachedHypothesis(id={self.id}, claim={self.claim[:50]}..., confidence={self.confidence})>"
@@ -124,7 +124,7 @@ class QuerySession(Base):
     state_snapshot = Column(JSON, default={})  # LangGraph state
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     completed_at = Column(TIMESTAMP, nullable=True)
-    metadata = Column(JSON, default={})
+    meta_data = Column(JSON, default={})
     
     def __repr__(self):
         return f"<QuerySession(id={self.id}, query={self.query[:50]}..., status={self.status})>"
@@ -142,16 +142,17 @@ Index("idx_session_id", QuerySession.session_id)
 
 def create_database(database_url: str):
     """
-    Create database and tables with pgvector extension.
+    Create database and tables with pgvector extension (if PostgreSQL).
     """
     from sqlalchemy import text
     
     engine = create_engine(database_url)
     
-    # Enable pgvector extension
-    with engine.connect() as conn:
-        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        conn.commit()
+    # Enable pgvector extension (only for PostgreSQL)
+    if 'postgresql' in database_url:
+        with engine.connect() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            conn.commit()
     
     # Create all tables
     Base.metadata.create_all(engine)

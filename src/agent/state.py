@@ -64,6 +64,6 @@ class AgentState(TypedDict):
     uncertainties: List[str]
     
     # Metadata
-    started_at: datetime
+    started_at: str  # ISO format timestamp
     tokens_used: int
 

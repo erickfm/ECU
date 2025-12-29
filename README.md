@@ -221,6 +221,22 @@ ECU/
 
 ### Running Tests
 
+**Comprehensive Investigation Test** (recommended):
+```bash
+# Full system test with multi-hop investigative queries
+python test_investigation.py
+```
+
+This test evaluates the complete agent reasoning loop with real investigative questions across:
+- Simple fact retrieval (1-hop)
+- Multi-document connections (2-3 hop)  
+- Complex investigations (4+ hop)
+- Entity resolution & co-occurrence
+- Temporal reasoning
+- Contradiction detection
+- Emergent pattern discovery
+
+**Unit Tests**:
 ```bash
 pytest tests/
 ```

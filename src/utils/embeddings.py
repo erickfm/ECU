@@ -104,14 +104,31 @@ class EmbeddingGenerator:
             return self.model.get_sentence_embedding_dimension()
 
 
-# Global embedding generator instance
+# Global embedding generator instance - proper singleton with lru_cache
 _embedding_generator = None
+_embedding_generator_lock = None
 
 
+@lru_cache(maxsize=1)
 def get_embedding_generator() -> EmbeddingGenerator:
-    """Get or create global embedding generator."""
+    """
+    Get or create global embedding generator.
+    
+    Uses lru_cache for proper singleton behavior - model is loaded only once
+    and reused across all calls. This prevents the 400MB Sentence Transformer
+    model from being loaded multiple times.
+    """
+    logger.info("Creating singleton EmbeddingGenerator instance")
+    return EmbeddingGenerator()
+
+
+def reset_embedding_generator():
+    """
+    Reset the cached embedding generator.
+    
+    Useful for testing or when switching between OpenAI and local embeddings.
+    """
+    get_embedding_generator.cache_clear()
     global _embedding_generator
-    if _embedding_generator is None:
-        _embedding_generator = EmbeddingGenerator()
-    return _embedding_generator
+    _embedding_generator = None
 

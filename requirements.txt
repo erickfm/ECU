@@ -17,7 +17,7 @@ dspy-ai==2.3.5
 
 # Embeddings
 sentence-transformers==2.2.2
-torch==2.1.2
+torch>=2.2.0
 
 # Vector Search
 faiss-cpu==1.7.4

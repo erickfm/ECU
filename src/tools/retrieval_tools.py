@@ -49,10 +49,11 @@ class RetrievalTools:
             # Generate query embedding
             query_embedding = self.embedding_gen.embed_text(query)
             
-            # Build query
+            # Build query with pgvector distance operator
+            from pgvector.sqlalchemy import Vector
             query_obj = session.query(
                 Observation,
-                func.cosine_distance(Observation.embedding, query_embedding).label('distance')
+                Observation.embedding.cosine_distance(query_embedding).label('distance')
             )
             
             # Apply filters
@@ -82,8 +83,8 @@ class RetrievalTools:
                         'context': obs.context,
                         'surface_form': obs.surface_form,
                         'similarity': float(similarity),
-                        'timestamp': obs.doc_timestamp,
-                        'metadata': obs.metadata,
+                        'timestamp': obs.doc_timestamp.isoformat() if obs.doc_timestamp else None,
+                        'metadata': dict(obs.metadata) if obs.metadata else {},
                     })
             
             logger.info(f"Semantic search for '{query[:50]}...' returned {len(observations)} results")
@@ -151,6 +152,7 @@ class RetrievalTools:
                         'distance': cooc.distance,
                         'co_occurrence_type': cooc.co_occurrence_type,
                         'strength': cooc.strength,
+                        'metadata': dict(obs.metadata) if obs.metadata else {},
                     })
             
             elif surface_form:
@@ -218,8 +220,8 @@ class RetrievalTools:
                 'doc_id': obs.doc_id,
                 'context': obs.context,
                 'surface_form': obs.surface_form,
-                'timestamp': obs.doc_timestamp,
-                'metadata': obs.metadata,
+                'timestamp': obs.doc_timestamp.isoformat() if obs.doc_timestamp else None,
+                'metadata': dict(obs.metadata) if obs.metadata else {},
             } for obs in results]
             
             logger.info(f"Temporal query returned {len(observations)} results")
@@ -273,6 +275,7 @@ class RetrievalTools:
                             'context': obs.context,
                             'surface_form': obs.surface_form,
                             'hop_distance': hop,
+                            'metadata': dict(obs.metadata) if obs.metadata else {},
                         })
                     
                     # Find neighbors

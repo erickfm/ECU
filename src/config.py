@@ -52,6 +52,19 @@ class Config(BaseModel):
     MIN_OBSERVATION_LENGTH: int = int(os.getenv("MIN_OBSERVATION_LENGTH", "50"))
     MAX_OBSERVATION_LENGTH: int = int(os.getenv("MAX_OBSERVATION_LENGTH", "1000"))
     
+    # Memory Management Limits (prevents OOM on long sessions)
+    MAX_OBSERVATIONS_IN_MEMORY: int = int(os.getenv("MAX_OBSERVATIONS_IN_MEMORY", "100"))
+    MAX_EVIDENCE_TRAIL_ITEMS: int = int(os.getenv("MAX_EVIDENCE_TRAIL_ITEMS", "200"))
+    MAX_HYPOTHESES: int = int(os.getenv("MAX_HYPOTHESES", "50"))
+    OBSERVATION_CONTEXT_LIMIT: int = int(os.getenv("OBSERVATION_CONTEXT_LIMIT", "500"))
+    
+    # Ingestion Settings
+    INGESTION_SUB_BATCH_SIZE: int = int(os.getenv("INGESTION_SUB_BATCH_SIZE", "10"))
+    INGESTION_FLUSH_THRESHOLD: int = int(os.getenv("INGESTION_FLUSH_THRESHOLD", "500"))
+    
+    # Use local embeddings (avoids OpenAI calls in tests)
+    USE_LOCAL_EMBEDDINGS: bool = os.getenv("USE_LOCAL_EMBEDDINGS", "false").lower() == "true"
+    
     class Config:
         arbitrary_types_allowed = True
 

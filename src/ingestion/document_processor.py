@@ -50,23 +50,46 @@ class DocumentProcessor:
         logger.info(f"Completed processing {len(txt_files)} files")
     
     def _process_batch(self, files: List[Path]):
-        """Process a batch of files."""
+        """
+        Process a batch of files with sub-batching for memory efficiency.
+        
+        Uses configurable sub-batch size and flush threshold to prevent
+        memory accumulation during large ingestion runs.
+        """
         session = get_session(self.engine)
         
+        SUB_BATCH_SIZE = config.INGESTION_SUB_BATCH_SIZE
+        FLUSH_THRESHOLD = config.INGESTION_FLUSH_THRESHOLD
+        
         try:
-            all_observations = []
+            pending_observations = []
+            total_processed = 0
             
-            for file_path in files:
-                observations = self._process_file(file_path)
-                all_observations.extend(observations)
-            
-            # Bulk insert observations
-            if all_observations:
-                session.bulk_save_objects(all_observations)
-                session.commit()
+            # Process files in sub-batches
+            for i in range(0, len(files), SUB_BATCH_SIZE):
+                sub_batch = files[i:i + SUB_BATCH_SIZE]
                 
-                # Extract and create co-occurrences
-                self._create_cooccurrences(session, all_observations)
+                for file_path in sub_batch:
+                    observations = self._process_file(file_path)
+                    pending_observations.extend(observations)
+                    
+                    # Flush to database when threshold reached
+                    if len(pending_observations) >= FLUSH_THRESHOLD:
+                        if pending_observations:
+                            session.bulk_save_objects(pending_observations)
+                            session.commit()
+                            self._create_cooccurrences(session, pending_observations)
+                            total_processed += len(pending_observations)
+                            logger.debug(f"Flushed {len(pending_observations)} observations (total: {total_processed})")
+                            pending_observations = []
+            
+            # Flush remaining observations
+            if pending_observations:
+                session.bulk_save_objects(pending_observations)
+                session.commit()
+                self._create_cooccurrences(session, pending_observations)
+                total_processed += len(pending_observations)
+                logger.debug(f"Final flush: {len(pending_observations)} observations (total: {total_processed})")
                 
         except Exception as e:
             logger.error(f"Error processing batch: {e}")
@@ -112,10 +135,10 @@ class DocumentProcessor:
                         span_end=chunk['end'],
                         surface_form=self._extract_surface_forms(chunk['text']),
                         context=chunk['text'],
-                        embedding=embedding.tolist(),
+                        embedding=embedding.tolist(),  # pgvector handles list conversion
                         doc_timestamp=doc_timestamp,
                         source_reliability=1.0,
-                        metadata={
+                        meta_data={
                             'file_path': str(file_path),
                             'chunk_index': chunk['index'],
                             'total_chunks': len(chunks),
